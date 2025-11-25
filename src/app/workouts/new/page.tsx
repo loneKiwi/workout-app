@@ -37,6 +37,7 @@ interface SetEntry {
   exerciseId: string;
   reps: number;
   weight: number;
+  rpe?: number;
 }
 
 export default function NewWorkoutPage() {
@@ -48,6 +49,7 @@ export default function NewWorkoutPage() {
   const [currentExerciseId, setCurrentExerciseId] = useState("");
   const [currentReps, setCurrentReps] = useState("");
   const [currentWeight, setCurrentWeight] = useState("");
+  const [currentRpe, setCurrentRpe] = useState("");
 
   useEffect(() => {
     async function loadExercises() {
@@ -70,12 +72,14 @@ export default function NewWorkoutPage() {
       exerciseId: currentExerciseId,
       reps: parseInt(currentReps),
       weight: parseFloat(currentWeight),
+      rpe: currentRpe ? parseFloat(currentRpe) : undefined,
     };
 
     setSets([...sets, newSet]);
-    // Keep the same exercise selected for convenience, just clear reps/weight
+    // Keep the same exercise selected for convenience, just clear reps/weight/rpe
     setCurrentReps("");
     setCurrentWeight("");
+    setCurrentRpe("");
   };
 
   const removeSet = (setId: string) => {
@@ -96,6 +100,7 @@ export default function NewWorkoutPage() {
           exerciseId: s.exerciseId,
           reps: s.reps,
           weight: s.weight,
+          rpe: s.rpe,
         })),
       });
       toast.success("Workout logged successfully!");
@@ -165,7 +170,7 @@ export default function NewWorkoutPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="reps">Reps</Label>
               <Input
@@ -186,6 +191,19 @@ export default function NewWorkoutPage() {
                 value={currentWeight}
                 onChange={(e) => setCurrentWeight(e.target.value)}
                 min="0"
+                step="0.5"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rpe">RPE</Label>
+              <Input
+                id="rpe"
+                type="number"
+                placeholder="8.5"
+                value={currentRpe}
+                onChange={(e) => setCurrentRpe(e.target.value)}
+                min="1"
+                max="10"
                 step="0.5"
               />
             </div>
@@ -231,6 +249,7 @@ export default function NewWorkoutPage() {
                       >
                         <span>
                           Set {index + 1}: {set.reps} reps × {set.weight} kg
+                          {set.rpe && ` @ ${set.rpe}`}
                         </span>
                         <Button
                           variant="ghost"

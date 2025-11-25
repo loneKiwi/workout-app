@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { getExercises } from "@/lib/actions/exercises";
+import { getWorkouts } from "@/lib/actions/workouts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,35 +10,34 @@ import { Heading3 } from "@/components/ui/heading3";
 import { Text } from "@/components/ui/text";
 import { Plus, Calendar, Dumbbell, TrendingUp, ChevronRight, Flame } from "lucide-react";
 import { getCategoryLabel, getCategoryColor } from "@/lib/constants";
+import { supabase } from "@/lib/supabase";
 
 export default async function DashboardPage() {
-  const [recentWorkouts, exerciseCount, totalSets] = await Promise.all([
-    db.workout.findMany({
-      include: {
-        sets: {
-          include: {
-            exercise: true,
-          },
-        },
-      },
-      orderBy: { date: "desc" },
-      take: 5,
-    }),
-    db.exercise.count(),
-    db.set.count(),
+  const [allWorkouts, allExercises] = await Promise.all([
+    getWorkouts(),
+    getExercises(),
   ]);
+
+  const recentWorkouts = allWorkouts.slice(0, 5);
+  const exerciseCount = allExercises.length;
+  
+  // Get total sets count
+  const { count: totalSets } = await supabase
+    .from("Set")
+    .select("*", { count: "exact", head: true });
 
   // Calculate stats
   const thisWeekStart = new Date();
   thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
   thisWeekStart.setHours(0, 0, 0, 0);
 
-  const workoutsThisWeek = recentWorkouts.filter(
-    (w) => w.date >= thisWeekStart
-  ).length;
+  const workoutsThisWeek = recentWorkouts.filter((w) => {
+    const workoutDate = new Date(w.date);
+    return workoutDate >= thisWeekStart;
+  }).length;
 
   const totalVolume = recentWorkouts.reduce(
-    (sum, w) => sum + w.sets.reduce((s, set) => s + set.reps * set.weight, 0),
+    (sum, w) => sum + (w.sets || []).reduce((s: number, set: any) => s + set.reps * set.weight, 0),
     0
   );
 
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
                 <TrendingUp className="h-5 w-5 text-emerald-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold">{totalSets}</div>
+                <div className="text-2xl font-bold">{totalSets || 0}</div>
                 <p className="text-xs text-muted-foreground">Total Sets</p>
               </div>
             </div>
@@ -167,16 +167,16 @@ export default async function DashboardPage() {
         ) : (
           <div className="space-y-3">
             {recentWorkouts.slice(0, 3).map((workout) => {
-              const exerciseGroups = workout.sets.reduce((acc, set) => {
+              const exerciseGroups = (workout.sets || []).reduce((acc: any, set: any) => {
                 if (!acc[set.exerciseId]) {
                   acc[set.exerciseId] = {
-                    exercise: set.exercise,
+                    exercise: set.Exercise,
                     count: 0,
                   };
                 }
                 acc[set.exerciseId].count++;
                 return acc;
-              }, {} as Record<string, { exercise: typeof workout.sets[0]["exercise"]; count: number }>);
+              }, {} as Record<string, { exercise: any; count: number }>);
 
               const exercises = Object.values(exerciseGroups);
 
@@ -191,14 +191,14 @@ export default async function DashboardPage() {
                           </div>
                           <div>
                             <p className="font-semibold">
-                              {workout.date.toLocaleDateString("en-US", {
+                              {new Date(workout.date).toLocaleDateString("en-US", {
                                 weekday: "short",
                                 month: "short",
                                 day: "numeric",
                               })}
                             </p>
                             <div className="flex flex-wrap gap-1.5 mt-1">
-                              {exercises.slice(0, 3).map(({ exercise, count }) => (
+                              {exercises.slice(0, 3).map(({ exercise, count }: any) => (
                                 <span
                                   key={exercise.id}
                                   className="inline-flex items-center gap-1 text-xs text-muted-foreground"
@@ -217,7 +217,7 @@ export default async function DashboardPage() {
                         </div>
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary">
-                            {workout.sets.length} sets
+                            {workout.sets?.length || 0} sets
                           </Badge>
                           <ChevronRight className="h-5 w-5 text-muted-foreground" />
                         </div>

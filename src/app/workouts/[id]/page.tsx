@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { getWorkout } from "@/lib/actions/workouts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,36 +16,26 @@ interface WorkoutPageProps {
 export default async function WorkoutPage({ params }: WorkoutPageProps) {
   const { id } = await params;
   
-  const workout = await db.workout.findUnique({
-    where: { id },
-    include: {
-      sets: {
-        include: {
-          exercise: true,
-        },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
+  const workout = await getWorkout(id);
 
   if (!workout) {
     notFound();
   }
 
   // Group sets by exercise
-  const setsByExercise = workout.sets.reduce((acc, set) => {
+  const setsByExercise = (workout.sets || []).reduce((acc: any, set: any) => {
     if (!acc[set.exerciseId]) {
       acc[set.exerciseId] = {
-        exercise: set.exercise,
+        exercise: set.Exercise,
         sets: [],
       };
     }
     acc[set.exerciseId].sets.push(set);
     return acc;
-  }, {} as Record<string, { exercise: typeof workout.sets[0]["exercise"]; sets: typeof workout.sets }>);
+  }, {} as Record<string, { exercise: any; sets: any[] }>);
 
   const exerciseGroups = Object.values(setsByExercise);
-  const totalVolume = workout.sets.reduce((sum, set) => sum + set.reps * set.weight, 0);
+  const totalVolume = (workout.sets || []).reduce((sum: number, set: any) => sum + set.reps * set.weight, 0);
 
   return (
     <div className="space-y-6">
@@ -59,7 +49,7 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
         <div className="flex items-start justify-between">
           <div>
             <Heading2>
-              {workout.date.toLocaleDateString("en-US", {
+              {new Date(workout.date).toLocaleDateString("en-US", {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
@@ -77,7 +67,7 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
       <div className="grid grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{workout.sets.length}</div>
+            <div className="text-2xl font-bold">{workout.sets?.length || 0}</div>
             <p className="text-sm text-muted-foreground">Total Sets</p>
           </CardContent>
         </Card>
@@ -97,7 +87,7 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
 
       {/* Exercise breakdown */}
       <div className="space-y-4">
-        {exerciseGroups.map(({ exercise, sets }) => (
+        {exerciseGroups.map(({ exercise, sets }: any) => (
           <Card key={exercise.id}>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
@@ -114,7 +104,7 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {sets.map((set, index) => (
+                {sets.map((set: any, index: number) => (
                   <div
                     key={set.id}
                     className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
@@ -131,6 +121,12 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
                         <span className="text-lg font-semibold">{set.weight}</span>
                         <span className="text-sm text-muted-foreground ml-1">kg</span>
                       </div>
+                      {set.rpe && (
+                        <div className="text-right">
+                          <span className="text-lg font-semibold">{set.rpe}</span>
+                          <span className="text-sm text-muted-foreground ml-1">RPE</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -142,4 +138,3 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
     </div>
   );
 }
-

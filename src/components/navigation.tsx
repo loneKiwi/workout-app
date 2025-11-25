@@ -23,12 +23,25 @@ export function Navigation() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <Dumbbell className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-lg font-semibold tracking-tight">Lifts</span>
+            <span className="text-lg font-semibold tracking-tight">beef</span>
           </div>
         </div>
         {navItems.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== "/" && pathname.startsWith(item.href) && item.href !== "/workouts/new");
+          let isActive = false;
+          // Exact match always wins
+          if (pathname === item.href) {
+            isActive = true;
+          } else if (item.href === "/workouts/new") {
+            // Log Workout should only be active on exact match
+            isActive = false;
+          } else if (item.href === "/workouts") {
+            // Workouts should be active for /workouts and /workouts/[id], but not /workouts/new
+            isActive = pathname.startsWith("/workouts") && pathname !== "/workouts/new";
+          } else if (item.href !== "/") {
+            // Other routes: check if pathname starts with the href
+            isActive = pathname.startsWith(item.href);
+          }
+          // Dashboard (/) only matches exactly, which is already handled above
           const Icon = item.icon;
           
           return (

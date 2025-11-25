@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { getExercises } from "@/lib/actions/exercises";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,10 +18,7 @@ interface ExercisesPageProps {
 export default async function ExercisesPage({ searchParams }: ExercisesPageProps) {
   const { category } = await searchParams;
   
-  const exercises = await db.exercise.findMany({
-    where: category ? { category } : undefined,
-    orderBy: { name: "asc" },
-  });
+  const exercises = await getExercises(category);
 
   const exercisesByCategory = exercises.reduce((acc, exercise) => {
     const cat = exercise.category;
@@ -85,7 +82,7 @@ export default async function ExercisesPage({ searchParams }: ExercisesPageProps
                     </span>
                   </div>
                   <div className="grid gap-3">
-                    {categoryExercises.map((exercise) => (
+                    {categoryExercises.map((exercise: typeof exercises[0]) => (
                       <ExerciseCard key={exercise.id} exercise={exercise} />
                     ))}
                   </div>
@@ -122,4 +119,3 @@ function ExerciseCard({ exercise }: { exercise: { id: string; name: string; cate
     </Card>
   );
 }
-

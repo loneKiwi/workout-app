@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { getWorkouts } from "@/lib/actions/workouts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,16 +11,7 @@ import { getCategoryLabel, getCategoryColor } from "@/lib/constants";
 import { DeleteWorkoutButton } from "./delete-workout-button";
 
 export default async function WorkoutsPage() {
-  const workouts = await db.workout.findMany({
-    include: {
-      sets: {
-        include: {
-          exercise: true,
-        },
-      },
-    },
-    orderBy: { date: "desc" },
-  });
+  const workouts = await getWorkouts();
 
   return (
     <div className="space-y-6">
@@ -55,20 +46,20 @@ export default async function WorkoutsPage() {
       ) : (
         <div className="space-y-3">
           {workouts.map((workout) => {
-            const exerciseGroups = workout.sets.reduce((acc, set) => {
+            const exerciseGroups = (workout.sets || []).reduce((acc: any, set: any) => {
               const exerciseId = set.exerciseId;
               if (!acc[exerciseId]) {
                 acc[exerciseId] = {
-                  exercise: set.exercise,
+                  exercise: set.Exercise,
                   sets: [],
                 };
               }
               acc[exerciseId].sets.push(set);
               return acc;
-            }, {} as Record<string, { exercise: typeof workout.sets[0]["exercise"]; sets: typeof workout.sets }>);
+            }, {} as Record<string, { exercise: any; sets: any[] }>);
 
             const uniqueExercises = Object.values(exerciseGroups);
-            const totalSets = workout.sets.length;
+            const totalSets = workout.sets?.length || 0;
 
             return (
               <Card key={workout.id} className="group hover:border-primary/50 transition-colors">
@@ -82,7 +73,7 @@ export default async function WorkoutsPage() {
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
                             <p className="font-semibold">
-                              {workout.date.toLocaleDateString("en-US", {
+                              {new Date(workout.date).toLocaleDateString("en-US", {
                                 weekday: "long",
                                 month: "short",
                                 day: "numeric",
@@ -96,7 +87,7 @@ export default async function WorkoutsPage() {
                             <p className="text-sm text-muted-foreground">{workout.notes}</p>
                           )}
                           <div className="flex flex-wrap gap-2">
-                            {uniqueExercises.slice(0, 4).map(({ exercise, sets }) => (
+                            {uniqueExercises.slice(0, 4).map(({ exercise, sets }: any) => (
                               <div
                                 key={exercise.id}
                                 className="flex items-center gap-1.5 text-sm text-muted-foreground"
@@ -127,4 +118,3 @@ export default async function WorkoutsPage() {
     </div>
   );
 }
-

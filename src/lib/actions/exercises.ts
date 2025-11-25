@@ -1,21 +1,36 @@
 "use server";
 
-import { db } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 export async function getExercises(category?: string) {
-  const exercises = await db.exercise.findMany({
-    where: category ? { category } : undefined,
-    orderBy: { name: "asc" },
-  });
-  return exercises;
+  let query = supabase.from("Exercise").select("*").order("name", { ascending: true });
+  
+  if (category) {
+    query = query.eq("category", category);
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) {
+    throw new Error(`Failed to fetch exercises: ${error.message}`);
+  }
+  
+  return data || [];
 }
 
 export async function getExercise(id: string) {
-  const exercise = await db.exercise.findUnique({
-    where: { id },
-  });
-  return exercise;
+  const { data, error } = await supabase
+    .from("Exercise")
+    .select("*")
+    .eq("id", id)
+    .single();
+  
+  if (error) {
+    throw new Error(`Failed to fetch exercise: ${error.message}`);
+  }
+  
+  return data;
 }
 
 export async function createExercise(data: {
@@ -23,13 +38,20 @@ export async function createExercise(data: {
   category: string;
   notes?: string;
 }) {
-  const exercise = await db.exercise.create({
-    data: {
+  const { data: exercise, error } = await supabase
+    .from("Exercise")
+    .insert({
       name: data.name,
       category: data.category,
       notes: data.notes || null,
-    },
-  });
+    })
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Failed to create exercise: ${error.message}`);
+  }
+  
   revalidatePath("/exercises");
   return exercise;
 }
@@ -42,18 +64,35 @@ export async function updateExercise(
     notes?: string;
   }
 ) {
-  const exercise = await db.exercise.update({
-    where: { id },
-    data,
-  });
+  const updateData: Record<string, any> = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.category !== undefined) updateData.category = data.category;
+  if (data.notes !== undefined) updateData.notes = data.notes;
+  
+  const { data: exercise, error } = await supabase
+    .from("Exercise")
+    .update(updateData)
+    .eq("id", id)
+    .select()
+    .single();
+  
+  if (error) {
+    throw new Error(`Failed to update exercise: ${error.message}`);
+  }
+  
   revalidatePath("/exercises");
   return exercise;
 }
 
 export async function deleteExercise(id: string) {
-  await db.exercise.delete({
-    where: { id },
-  });
+  const { error } = await supabase
+    .from("Exercise")
+    .delete()
+    .eq("id", id);
+  
+  if (error) {
+    throw new Error(`Failed to delete exercise: ${error.message}`);
+  }
+  
   revalidatePath("/exercises");
 }
-
