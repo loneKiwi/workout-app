@@ -194,7 +194,7 @@ const render = (
 ) => {
   const ToastRenderer = (id: number | string) => (
     <CustomToaster
-      id={id}
+      id={String(id)}
       status={status}
       label={label}
       description={opts.description}
