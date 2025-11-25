@@ -50,6 +50,7 @@ export default function NewWorkoutPage() {
   const [currentReps, setCurrentReps] = useState("");
   const [currentWeight, setCurrentWeight] = useState("");
   const [currentRpe, setCurrentRpe] = useState("");
+  const [numberOfSets, setNumberOfSets] = useState("1");
 
   useEffect(() => {
     async function loadExercises() {
@@ -67,19 +68,21 @@ export default function NewWorkoutPage() {
       return;
     }
 
-    const newSet: SetEntry = {
+    const setsToAdd = parseInt(numberOfSets) || 1;
+    const newSets: SetEntry[] = Array.from({ length: setsToAdd }, () => ({
       id: crypto.randomUUID(),
       exerciseId: currentExerciseId,
       reps: parseInt(currentReps),
       weight: parseFloat(currentWeight),
       rpe: currentRpe ? parseFloat(currentRpe) : undefined,
-    };
+    }));
 
-    setSets([...sets, newSet]);
+    setSets([...sets, ...newSets]);
     // Keep the same exercise selected for convenience, just clear reps/weight/rpe
     setCurrentReps("");
     setCurrentWeight("");
     setCurrentRpe("");
+    setNumberOfSets("1");
   };
 
   const removeSet = (setId: string) => {
@@ -170,7 +173,7 @@ export default function NewWorkoutPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="reps">Reps</Label>
               <Input
@@ -194,6 +197,9 @@ export default function NewWorkoutPage() {
                 step="0.5"
               />
             </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="rpe">RPE</Label>
               <Input
@@ -205,6 +211,17 @@ export default function NewWorkoutPage() {
                 min="1"
                 max="10"
                 step="0.5"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sets">Number of Sets</Label>
+              <Input
+                id="sets"
+                type="number"
+                placeholder="1"
+                value={numberOfSets}
+                onChange={(e) => setNumberOfSets(e.target.value)}
+                min="1"
               />
             </div>
           </div>

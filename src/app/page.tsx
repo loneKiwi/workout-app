@@ -31,7 +31,7 @@ export default async function DashboardPage() {
   thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
   thisWeekStart.setHours(0, 0, 0, 0);
 
-  const workoutsThisWeek = recentWorkouts.filter((w) => {
+  const workoutsThisWeek = allWorkouts.filter((w) => {
     const workoutDate = new Date(w.date);
     return workoutDate >= thisWeekStart;
   }).length;
@@ -41,25 +41,45 @@ export default async function DashboardPage() {
     0
   );
 
-  // Calculate streak
-  let streak = 0;
+  // Calculate weekly streak (weeks with 3+ workouts)
+  let weeklyStreak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  for (let i = 0; i < 30; i++) {
-    const checkDate = new Date(today);
-    checkDate.setDate(checkDate.getDate() - i);
-    const hasWorkout = recentWorkouts.some((w) => {
-      const workoutDate = new Date(w.date);
-      workoutDate.setHours(0, 0, 0, 0);
-      return workoutDate.getTime() === checkDate.getTime();
-    });
+  // Get the start of the current week (Sunday)
+  const getWeekStart = (date: Date) => {
+    const weekStart = new Date(date);
+    weekStart.setDate(date.getDate() - date.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    return weekStart;
+  };
+  
+  // Group workouts by week
+  const workoutsByWeek = new Map<string, number>();
+  allWorkouts.forEach((workout) => {
+    const workoutDate = new Date(workout.date);
+    const weekStart = getWeekStart(workoutDate);
+    const weekKey = weekStart.toISOString();
+    workoutsByWeek.set(weekKey, (workoutsByWeek.get(weekKey) || 0) + 1);
+  });
+  
+  // Count consecutive weeks with 3+ workouts, starting from current week
+  const currentWeekStart = getWeekStart(today);
+  for (let weekOffset = 0; weekOffset < 52; weekOffset++) {
+    const checkWeek = new Date(currentWeekStart);
+    checkWeek.setDate(checkWeek.getDate() - (weekOffset * 7));
+    const weekKey = checkWeek.toISOString();
+    const workoutCount = workoutsByWeek.get(weekKey) || 0;
     
-    if (hasWorkout) {
-      streak++;
-    } else if (i > 0) {
+    if (workoutCount >= 3) {
+      weeklyStreak++;
+    } else if (weekOffset > 0) {
+      // Stop if we hit a past week with less than 3 workouts
+      // (current week can still be in progress, so we don't break on weekOffset === 0)
       break;
     }
+    // If current week has less than 3 workouts, don't count it but don't break the streak
+    // (week isn't over yet)
   }
 
   return (
@@ -117,8 +137,8 @@ export default async function DashboardPage() {
                 <Flame className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <div className="text-2xl font-bold">{streak}</div>
-                <p className="text-xs text-muted-foreground">Day Streak</p>
+                <div className="text-2xl font-bold">{weeklyStreak}</div>
+                <p className="text-xs text-muted-foreground">Week Streak</p>
               </div>
             </div>
           </CardContent>
